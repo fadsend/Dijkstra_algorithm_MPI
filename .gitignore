@@ -3,4 +3,6 @@ dijkstra
 *.dot
 *.sh
 *.txt
-
+*.o
+log
+heap/main.*

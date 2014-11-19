@@ -4,9 +4,6 @@ import random
 import sys
 import os
 
-PROBABILITY = 0.7
-MAX_WEIGHT = 100
-
 def run(num_of_vertices, source, num_of_proc, out = False):
 	output = os.popen("mpirun -n " + str(num_of_proc) + " ./dijkstra " + str(num_of_vertices) + " " + str(source)).read()
 	out_list = output.split("\n")
@@ -45,6 +42,7 @@ def run(num_of_vertices, source, num_of_proc, out = False):
 def main():
 	if (len(sys.argv) < 2):
 		print("Run with ./test.py <number of runs> [-o]")
+		return
 	if (len(sys.argv) == 3 and sys.argv[2] == "-o"):
 		out = True
 	else:

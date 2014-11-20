@@ -51,7 +51,7 @@ def main():
 	for i in range(arg):
 		print("-------------------------------------------------------")
 		print("Run #" + str(i) + ":")
-		num_of_vertices = random.randrange(1000) + 10
+		num_of_vertices = random.randrange(10000) + 10
 		source = random.randrange(num_of_vertices)
 		num_of_proc = min(random.randrange(10) + 5, num_of_vertices) 
 		print("Number of vertices: " + str(num_of_vertices))

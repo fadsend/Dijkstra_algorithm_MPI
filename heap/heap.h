@@ -21,10 +21,12 @@ public:
 	void decrease_key(int i, int value);
 	edge find_min();
 	void delete_min();
+	void remove(int i);
 	int get_value(int i);
 	int size();
 	bool contain(int i);
 	vector<edge> get_elements();
+	int get_top();
 };
 
 

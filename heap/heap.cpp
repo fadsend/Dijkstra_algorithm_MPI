@@ -64,22 +64,22 @@ void Heap::delete_min() {
 //	cout << "min: " << elements_[0].first << " " <<elements_[0].second << endl; 
 	map_[elements_[0].first] = -1;
 	map_[elements_[elements_.size() - 1].first] = 0;
-	cout << "deleting : " << elements_[0].first << ", " << elements_[0].second << endl;
+//	cout << "deleting : " << elements_[0].first << ", " << elements_[0].second << endl;
 	swap(elements_[0], elements_[elements_.size() - 1]);
 	//swap(map_[elements_[0].first], map_[elements_[elements_.size() - 1].first]);
 	elements_.pop_back();
 	min_heapify_(0);
-	cout << "start: ";
-	for(auto i : elements_) 
-		cout << "( " << i.first << ", " << i.second << ")";
-	cout << endl;
+//	cout << "start: ";
+//	for(auto i : elements_) 
+//		cout << "( " << i.first << ", " << i.second << ")";
+//	cout << endl;
 }
 
 void Heap::decrease_key(int i, int value) {
 	int location = map_[i];
 	elements_[location].second -= value;
 	if (elements_[location].second < 0) {
-cout << i << " v = " <<  value <<  "el = " << elements_[location].first << "old = " << elements_[location].second << endl;
+//cout << i << " v = " <<  value <<  "el = " << elements_[location].first << "old = " << elements_[location].second << endl;
 //		cout << "loc = " << location << endl;
 //		cout << elements_[location].first << " " << elements_[location].second << endl;
 		throw "Negative edge weight";
@@ -90,6 +90,15 @@ cout << i << " v = " <<  value <<  "el = " << elements_[location].first << "old 
 		location = parent_(location);
 	}
 //	cout << "loc = " << location << endl;
+}
+
+void Heap::remove(int i) {
+	int location = map_[i];
+	map_[elements_[location].first] = -1;
+	map_[elements_[elements_.size() - 1].first] = location;
+	swap(elements_[location], elements_[elements_.size() - 1]);
+	elements_.pop_back();
+	min_heapify_(0);
 }
 
 int Heap::get_value(int i) {
@@ -106,4 +115,8 @@ bool Heap::contain(int i) {
 
 vector<edge> Heap::get_elements() {
 	return elements_;
+}
+
+int Heap::get_top() {
+	return elements_[0].second;
 }

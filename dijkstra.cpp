@@ -92,7 +92,7 @@ int* generate_graph(int num_of_vertices) {
 	}
 
 	//Writing structure of the graph to a file
-	//write_graph_to_file(adjacency_matrix, num_of_vertices);
+//	write_graph_to_file(adjacency_matrix, num_of_vertices);
 	
 	//Test print
 	/*cout << "Adjacency matrix for the graph:" << endl;
@@ -113,6 +113,7 @@ int* generate_graph(int num_of_vertices) {
 void serial_dijkstras_algorithm(int* adjacency_matrix, int num_of_vertices, int source, bool del = true) {
 	//	This function does dijkstra's algorithm for a random graph.
 	
+	double time1 = MPI_Wtime();
 	//Initialize destination and visited arrays
 	int* destination = new int[num_of_vertices];
 	
@@ -131,7 +132,6 @@ void serial_dijkstras_algorithm(int* adjacency_matrix, int num_of_vertices, int 
 	vec.clear();
 	
 	//Start time
-	double time1 = MPI_Wtime();
 	
 	int iteration_count = 0;
 	
@@ -195,26 +195,25 @@ int* split_vertices(int num_of_vertices) {
 }
 
 void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
-	int* adjacency_matrix = nullptr;
-	int* destination = nullptr;
-	int* splits = nullptr;
-	int* local_dest = nullptr;
-	int* lengths = nullptr;
-	int* displacements = nullptr;
+	int* adjacency_matrix = nullptr;//d
+	int* destination = nullptr;//d
+	int* splits = nullptr;//d
+	int* lengths = nullptr;//d
+	int* displacements = nullptr;//d
 	int length = 0;
 	int start = 0, end = 0;
-	int* partition = nullptr;
-	int* matrix_disp = nullptr;
-	int* current_vertex = new int[num_of_vertices];
-	int* matrix_lengths = nullptr;
+	int* matrix_disp = nullptr;//d
+	int* current_vertex = new int[num_of_vertices];//d
+	int* matrix_lengths = nullptr;//d
 	double time1, time2;
 	MPI_Comm_rank(MPI_COMM_WORLD, &proc_rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
-	int* id = new int[size + 1];
+	int* id = new int[size + 1];//d
 	if (proc_rank == 0) {	
 		adjacency_matrix = generate_graph(num_of_vertices);
 		serial_dijkstras_algorithm(adjacency_matrix, num_of_vertices, source, false);
 		cout.flush();
+		time1 = MPI_Wtime();
 		splits = split_vertices(num_of_vertices);
 		lengths = new int[size];
 		matrix_lengths = new int[size];
@@ -242,12 +241,15 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 	MPI_Bcast(id, size + 1, MPI_INT, 0, MPI_COMM_WORLD);
 	MPI_Scatter(splits, 1, MPI_INT, &start, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	MPI_Scatter(lengths, 1, MPI_INT, &length, 1, MPI_INT, 0, MPI_COMM_WORLD);
-	local_dest = new int[length];
-	partition = new int[length * num_of_vertices];
+	
+	int* local_dest = new int[length];
+	int* partition = new int[length * num_of_vertices];
 
 	MPI_Scatterv(adjacency_matrix, matrix_lengths, matrix_disp, MPI_INT, partition, length * num_of_vertices, MPI_INT, 0, MPI_COMM_WORLD);
 	MPI_Scatterv(destination, lengths, splits, MPI_INT, local_dest, length, MPI_INT, 0, MPI_COMM_WORLD);
 	if (proc_rank == 0) {
+		delete[] matrix_disp;
+		delete[] matrix_lengths;
 		delete[] adjacency_matrix;
 		for (int i = 0; i < size - 1; ++i) {
 			splits[i] = splits[i + 1];
@@ -264,9 +266,9 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 	Heap priority_queue(vec);
 	vec.clear();
 
-	if (proc_rank == 0)
-		time1 = MPI_Wtime();
-	
+	if (proc_rank == 0) {
+		delete[] splits;
+	}
 	int iteration_count = 0;
 	while(iteration_count != num_of_vertices) {
 		
@@ -309,18 +311,20 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 		//Relax all adjacent to the current vertices
 		for (int j = 0; j < end - start; ++j) {
 			if (current_vertex[j + start] != INF) {
-					if (local_dest[j] > global_min[0] + current_vertex[ j + start]) {
-						int tmp = local_dest[j];
-						local_dest[j] = global_min[0] + current_vertex[ j + start];
-						if (priority_queue.contain(j)) {
-							priority_queue.decrease_key(j, tmp - (global_min[0] + current_vertex[j + start])); 	
-						} 
+				if (local_dest[j] > global_min[0] + current_vertex[ j + start]) {
+					int tmp = local_dest[j];
+					local_dest[j] = global_min[0] + current_vertex[ j + start];
+					if (priority_queue.contain(j)) {
+						priority_queue.decrease_key(j, tmp - (global_min[0] + current_vertex[j + start])); 	
 					} 
+				} 
 			}
 		}
 				
 		iteration_count += 1;
 	}
+
+	//Gather all local destination to the final destination array
 	MPI_Gatherv(local_dest, length, MPI_INT, destination, lengths, displacements, MPI_INT, 0, MPI_COMM_WORLD);
 	
 	//Printing results
@@ -339,10 +343,13 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 	}
 
 	//Free allocated memory
-	delete[] destination;
-	if (proc_rank != 0) {
+	delete[] id;
+	delete[] local_dest;
+	if (proc_rank == 0) {
+		delete[] destination;
+		delete[] displacements;
+		delete[] lengths;
 		//delete[] adjacency_matrix;
-		delete[] splits;
 	}
 	delete[] current_vertex;
 	delete[] partition;

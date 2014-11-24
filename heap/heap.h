@@ -7,7 +7,7 @@ typedef pair<int, int> edge;
 
 class Heap { 
 private:
-	const int INF = 10000;
+	const int INF;
 	vector<edge> elements_;
 	vector<int> map_;
 	int size_;
@@ -20,7 +20,7 @@ public:
 	Heap(edge* elements, int size);
 	Heap(vector<edge> elemetns);
 	void decrease_key(int i, int value);
-	inline edge find_min() {
+	edge find_min() {
 		if (elements_.size() == 0) {
 			return make_pair(-1, INF);
 		}
@@ -30,7 +30,7 @@ public:
 	void remove(int i);
 	 int get_value(int i);
 	int size();
-	inline bool contain(int i) {
+	bool contain(int i) {
 		return map_[i] != -1;
 	};
 	vector<edge> get_elements();

@@ -38,7 +38,7 @@ void Heap::min_heapify_(int i) {
 	}
 }
 
-Heap::Heap(vector<edge> elements) : elements_(elements), map_(elements.size()) {
+Heap::Heap(vector<edge> elements) : INF(10000), elements_(elements), map_(elements.size()) {
 	this->size_ = elements_.size();
 	for (size_t i = 0; i < map_.size(); ++i) {
 		map_[elements_[i].first] = i;
@@ -46,7 +46,7 @@ Heap::Heap(vector<edge> elements) : elements_(elements), map_(elements.size()) {
 	build_heap_();
 }
 
-Heap::Heap(edge* elements, int size) : map_(size), elements_(elements, elements + size) {
+Heap::Heap(edge* elements, int size) : INF(10000), map_(size), elements_(elements, elements + size) {
 	this->size_ = size;
 	for (size_t i = 0; i < size; ++i) {
 		map_[elements_[i].first] = i;
@@ -78,7 +78,7 @@ void Heap::decrease_key(int i, int value) {
 //		cout << elements_[location].first << " " << elements_[location].second << endl;
 		throw "Negative edge weight";
 	}
-	while (location > 0 and elements_[location].second < elements_[parent_(location)].second) {
+	while (location > 0 && elements_[location].second < elements_[parent_(location)].second) {
 		swap(elements_[location], elements_[parent_(location)]);
 		swap(map_[elements_[location].first], map_[elements_[parent_(location)].first]);
 		location = parent_(location);

@@ -10,6 +10,7 @@
 #include <vector>
 #include <queue>
 #include <set>
+#include <time.h>
 #include "heap/heap.h"
 #include "mpi.h"
 
@@ -203,7 +204,7 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 	int* matrix_disp = nullptr;//d
 	int* current_vertex = new int[num_of_vertices];//d
 	int* matrix_lengths = nullptr;//d
-	double time1, time2;
+	double time1, time2, time3;
 	MPI_Comm_rank(MPI_COMM_WORLD, &proc_rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	int* id = new int[size + 1];//d
@@ -211,6 +212,7 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 		adjacency_matrix = generate_graph(num_of_vertices);
 		serial_dijkstras_algorithm(adjacency_matrix, num_of_vertices, source, false);
 		cout.flush();
+		time3 = MPI_Wtime();
 		splits = split_vertices(num_of_vertices);
 		lengths = new int[size];
 		matrix_lengths = new int[size];
@@ -307,11 +309,14 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 		MPI_Bcast(current_vertex, num_of_vertices, MPI_INT, curr_proc, MPI_COMM_WORLD);
 		
 		//Relax all adjacent to the current vertices
-		for (int j = 0; j < end - start; ++j) {
-			if (priority_queue.contain(j) && local_dest[j] > global_min[0] + current_vertex[ j + start] ) {
-				int tmp = local_dest[j];
-				local_dest[j] = global_min[0] + current_vertex[ j + start];
-				priority_queue.decrease_key(j, tmp - (global_min[0] + current_vertex[j + start])); 	
+		if (priority_queue.size() != 0) {
+			for (int j = 0; j < end - start; ++j) {
+				if ( local_dest[j] > global_min[0] + current_vertex[ j + start] ) {
+					int tmp = local_dest[j];
+					local_dest[j] = global_min[0] + current_vertex[ j + start];
+					if (priority_queue.contain(j) )
+					priority_queue.decrease_key(j, tmp - (global_min[0] + current_vertex[j + start])); 	
+				}
 			}
 		}
 				
@@ -333,7 +338,8 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 			}
 		}
 		cout << endl;
-		cout << "Time: " << time2 - time1 << endl;;
+		cout << "Time: " << time2 - time1 << endl;
+		cout << "time with init: " << time2 - time3 << endl;
 	}
 
 	//Free allocated memory

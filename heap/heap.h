@@ -10,6 +10,7 @@ private:
 	const int INF = 10000;
 	vector<edge> elements_;
 	vector<int> map_;
+	int size_;
 	inline int left_(int i);
 	inline int right_(int i);
 	inline int parent_(int i);

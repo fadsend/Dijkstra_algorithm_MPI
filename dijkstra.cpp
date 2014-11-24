@@ -146,11 +146,9 @@ void serial_dijkstras_algorithm(int* adjacency_matrix, int num_of_vertices, int 
 
 		//Fix distances from adjacent to the current vertices
 		for (int j = 0; j < num_of_vertices; ++j) {
-			if (adjacency_matrix[current * num_of_vertices + j] != INF) {
-				if (priority_queue.get_value(j) > current_value + adjacency_matrix[current * num_of_vertices + j]) {
+				if (priority_queue.contain(j) && priority_queue.get_value(j) > current_value + adjacency_matrix[current * num_of_vertices + j]  ) {
 					priority_queue.decrease_key(j, priority_queue.get_value(j) - (current_value + adjacency_matrix[current * num_of_vertices + j])); 	
 					destination[j] = current_value + adjacency_matrix[current * num_of_vertices + j];
-				}
 			}
 		}
 		
@@ -310,21 +308,14 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 		
 		//Relax all adjacent to the current vertices
 		for (int j = 0; j < end - start; ++j) {
-			if (current_vertex[j + start] != INF) {
-				if (priority_queue.get_value(j) > global_min[0] + current_vertex[ j + start]) {
-					int tmp = local_dest[j];
-					local_dest[j] = global_min[0] + current_vertex[ j + start];
-					if (priority_queue.contain(j)) {
-						priority_queue.decrease_key(j, tmp - (global_min[0] + current_vertex[j + start])); 	
-					} 
-				} 
+			if (priority_queue.contain(j) && local_dest[j] > global_min[0] + current_vertex[ j + start] ) {
+				int tmp = local_dest[j];
+				local_dest[j] = global_min[0] + current_vertex[ j + start];
+				priority_queue.decrease_key(j, tmp - (global_min[0] + current_vertex[j + start])); 	
 			}
 		}
 				
 		iteration_count += 1;
-	}
-	if (proc_rank == 0) {
-		time2 = MPI_Wtime();
 	}
 
 	//Gather all local destination to the final destination array
@@ -332,7 +323,7 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 	
 	//Printing results
 	if (proc_rank == 0) {
-		//time2 = MPI_Wtime();
+	time2 = MPI_Wtime();
 		cout << "Parallel:\n";// from " << source << ": " <<  endl;
 		for (int i = 0; i < num_of_vertices; ++i) {
 			if (destination[i] == INF) {

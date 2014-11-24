@@ -23,12 +23,12 @@ void Heap::min_heapify_(int i) {
 	int l = left_(i);
 	int r = right_(i);
 	int smallest;
-	if (l < elements_.size() && elements_[l].second < elements_[i].second) {
+	if (l < size_ && elements_[l].second < elements_[i].second) {
 		smallest = l;
 	} else {
 		smallest = i;
 	}
-	if (r < elements_.size() && elements_[r].second < elements_[smallest].second) {
+	if (r < size_ && elements_[r].second < elements_[smallest].second) {
 		smallest = r;
 	}
 	if (smallest != i) {
@@ -39,6 +39,7 @@ void Heap::min_heapify_(int i) {
 }
 
 Heap::Heap(vector<edge> elements) : elements_(elements), map_(elements.size()) {
+	this->size_ = elements_.size();
 	for (size_t i = 0; i < map_.size(); ++i) {
 		map_[elements_[i].first] = i;
 	}
@@ -46,6 +47,7 @@ Heap::Heap(vector<edge> elements) : elements_(elements), map_(elements.size()) {
 }
 
 Heap::Heap(edge* elements, int size) : map_(size), elements_(elements, elements + size) {
+	this->size_ = size;
 	for (size_t i = 0; i < size; ++i) {
 		map_[elements_[i].first] = i;
 	}
@@ -54,11 +56,12 @@ Heap::Heap(edge* elements, int size) : map_(size), elements_(elements, elements 
 void Heap::delete_min() {
 //	cout << "min: " << elements_[0].first << " " <<elements_[0].second << endl; 
 	map_[elements_[0].first] = -1;
-	map_[elements_[elements_.size() - 1].first] = 0;
+	map_[elements_[size_ - 1].first] = 0;
 //	cout << "deleting : " << elements_[0].first << ", " << elements_[0].second << endl;
-	swap(elements_[0], elements_[elements_.size() - 1]);
+	swap(elements_[0], elements_[size_ - 1]);
 	//swap(map_[elements_[0].first], map_[elements_[elements_.size() - 1].first]);
-	elements_.pop_back();
+	//elements_.pop_back();
+	size_ -= 1;
 	min_heapify_(0);
 //	cout << "start: ";
 //	for(auto i : elements_) 
@@ -86,18 +89,22 @@ void Heap::decrease_key(int i, int value) {
 void Heap::remove(int i) {
 	int location = map_[i];
 	map_[elements_[location].first] = -1;
-	map_[elements_[elements_.size() - 1].first] = location;
-	swap(elements_[location], elements_[elements_.size() - 1]);
-	elements_.pop_back();
+	map_[elements_[size_ - 1].first] = location;
+	swap(elements_[location], elements_[size_ - 1]);
+	size_ -= 1;
+	//elements_.pop_back();
 	min_heapify_(0);
 }
 
 int Heap::get_value(int i) {
+	if (map_[i] == -1) {
+		return 0;
+	}
 	return elements_[map_[i]].second;
 }
 
 int Heap::size() {
-	return elements_.size();
+	return size_;
 }
 
 

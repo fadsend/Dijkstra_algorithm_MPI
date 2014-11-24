@@ -51,15 +51,6 @@ Heap::Heap(edge* elements, int size) : map_(size), elements_(elements, elements 
 	}
 	build_heap_();
 }
-
-edge Heap::find_min() {
-	if (elements_.size() == 0) {
-		cout << "here" << endl;	
-		return make_pair(-1, INF);
-	}
-	return elements_[0];
-}
-
 void Heap::delete_min() {
 //	cout << "min: " << elements_[0].first << " " <<elements_[0].second << endl; 
 	map_[elements_[0].first] = -1;
@@ -109,9 +100,7 @@ int Heap::size() {
 	return elements_.size();
 }
 
-bool Heap::contain(int i) {
-	return map_[i] != -1;
-}
+
 
 vector<edge> Heap::get_elements() {
 	return elements_;

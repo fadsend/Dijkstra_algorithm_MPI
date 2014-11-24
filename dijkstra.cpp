@@ -213,7 +213,6 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 		adjacency_matrix = generate_graph(num_of_vertices);
 		serial_dijkstras_algorithm(adjacency_matrix, num_of_vertices, source, false);
 		cout.flush();
-		time1 = MPI_Wtime();
 		splits = split_vertices(num_of_vertices);
 		lengths = new int[size];
 		matrix_lengths = new int[size];
@@ -270,6 +269,7 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 		delete[] splits;
 	}
 	int iteration_count = 0;
+		time1 = MPI_Wtime();
 	while(iteration_count != num_of_vertices) {
 		
 		//Find not selected vertex with minimum distance
@@ -311,7 +311,7 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 		//Relax all adjacent to the current vertices
 		for (int j = 0; j < end - start; ++j) {
 			if (current_vertex[j + start] != INF) {
-				if (local_dest[j] > global_min[0] + current_vertex[ j + start]) {
+				if (priority_queue.get_value(j) > global_min[0] + current_vertex[ j + start]) {
 					int tmp = local_dest[j];
 					local_dest[j] = global_min[0] + current_vertex[ j + start];
 					if (priority_queue.contain(j)) {
@@ -323,13 +323,16 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 				
 		iteration_count += 1;
 	}
+	if (proc_rank == 0) {
+		time2 = MPI_Wtime();
+	}
 
 	//Gather all local destination to the final destination array
 	MPI_Gatherv(local_dest, length, MPI_INT, destination, lengths, displacements, MPI_INT, 0, MPI_COMM_WORLD);
 	
 	//Printing results
 	if (proc_rank == 0) {
-		time2 = MPI_Wtime();
+		//time2 = MPI_Wtime();
 		cout << "Parallel:\n";// from " << source << ": " <<  endl;
 		for (int i = 0; i < num_of_vertices; ++i) {
 			if (destination[i] == INF) {

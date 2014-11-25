@@ -148,7 +148,7 @@ void serial_dijkstras_algorithm(int* adjacency_matrix, int num_of_vertices, int 
 		//Fix distances from adjacent to the current vertices
 		for (int j = 0; j < num_of_vertices; ++j) {
 				if (priority_queue.contain(j) && priority_queue.get_value(j) > current_value + adjacency_matrix[current * num_of_vertices + j]  ) {
-					priority_queue.decrease_key(j, priority_queue.get_value(j) - (current_value + adjacency_matrix[current * num_of_vertices + j])); 	
+						priority_queue.decrease_key(j, priority_queue.get_value(j) - (current_value + adjacency_matrix[current * num_of_vertices + j])); 	
 					destination[j] = current_value + adjacency_matrix[current * num_of_vertices + j];
 			}
 		}
@@ -309,14 +309,12 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 		MPI_Bcast(current_vertex, num_of_vertices, MPI_INT, curr_proc, MPI_COMM_WORLD);
 		
 		//Relax all adjacent to the current vertices
-		if (priority_queue.size() != 0) {
-			for (int j = 0; j < end - start; ++j) {
-				if ( local_dest[j] > global_min[0] + current_vertex[ j + start] ) {
-					int tmp = local_dest[j];
-					local_dest[j] = global_min[0] + current_vertex[ j + start];
-					if (priority_queue.contain(j) )
+		for (int j = 0; j < end - start; ++j) {
+			if ( local_dest[j] > global_min[0] + current_vertex[ j + start] ) {
+				int tmp = local_dest[j];
+				local_dest[j] = global_min[0] + current_vertex[ j + start];
+				if (priority_queue.contain(j))
 					priority_queue.decrease_key(j, tmp - (global_min[0] + current_vertex[j + start])); 	
-				}
 			}
 		}
 				

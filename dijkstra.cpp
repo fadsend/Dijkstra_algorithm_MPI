@@ -147,9 +147,11 @@ void serial_dijkstras_algorithm(int* adjacency_matrix, int num_of_vertices, int 
 
 		//Fix distances from adjacent to the current vertices
 		for (int j = 0; j < num_of_vertices; ++j) {
-				if (priority_queue.contain(j) && priority_queue.get_value(j) > current_value + adjacency_matrix[current * num_of_vertices + j]  ) {
-						priority_queue.decrease_key(j, priority_queue.get_value(j) - (current_value + adjacency_matrix[current * num_of_vertices + j])); 	
+				if (destination[j] > current_value + adjacency_matrix[current * num_of_vertices + j]  ) {
 					destination[j] = current_value + adjacency_matrix[current * num_of_vertices + j];
+					if (priority_queue.contain(j))
+						priority_queue.decrease_key(j, priority_queue.get_value(j) - (current_value + adjacency_matrix[current * num_of_vertices + j])); 	
+					
 			}
 		}
 		
@@ -208,6 +210,8 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &proc_rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	int* id = new int[size + 1];//d
+	int* splits_lin = new int[size];
+	int* lengths_lin = new int[size]; 
 	if (proc_rank == 0) {	
 		adjacency_matrix = generate_graph(num_of_vertices);
 		serial_dijkstras_algorithm(adjacency_matrix, num_of_vertices, source, false);
@@ -233,14 +237,17 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 		displacements[size - 1] = splits[size - 1];
 		lengths[size - 1] = num_of_vertices - splits[size - 1];
 		for (int i = 0; i < size; ++i) {
+			splits_lin[i] = splits[i];
+			lengths_lin[i] = lengths[i];
 			matrix_disp[i] = displacements[i] * num_of_vertices;
 			matrix_lengths[i] = lengths[i] * num_of_vertices;
 		}
 	}
 	MPI_Bcast(id, size + 1, MPI_INT, 0, MPI_COMM_WORLD);
 	MPI_Scatter(splits, 1, MPI_INT, &start, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Bcast(splits_lin, size, MPI_INT, 0, MPI_COMM_WORLD);
 	MPI_Scatter(lengths, 1, MPI_INT, &length, 1, MPI_INT, 0, MPI_COMM_WORLD);
-	
+	MPI_Bcast(lengths_lin, size, MPI_INT, 0, MPI_COMM_WORLD);
 	int* local_dest = new int[length];
 	int* partition = new int[length * num_of_vertices];
 
@@ -269,6 +276,7 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 		delete[] splits;
 	}
 	int iteration_count = 0;
+	int* current_vertex_part = new int[length];
 		time1 = MPI_Wtime();
 	while(iteration_count != num_of_vertices) {
 		
@@ -306,15 +314,15 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 		}
 
 		//Broadcast the current vertex raw
-		MPI_Bcast(current_vertex, num_of_vertices, MPI_INT, curr_proc, MPI_COMM_WORLD);
-		
+		//MPI_Bcast(current_vertex, num_of_vertices, MPI_INT, curr_proc, MPI_COMM_WORLD);
+		MPI_Scatterv(current_vertex, lengths_lin, splits_lin, MPI_INT, current_vertex_part, length, MPI_INT, curr_proc, MPI_COMM_WORLD);
 		//Relax all adjacent to the current vertices
 		for (int j = 0; j < end - start; ++j) {
-			if ( local_dest[j] > global_min[0] + current_vertex[ j + start] ) {
+			if ( local_dest[j] > global_min[0] + current_vertex_part[ j ] ) {
 				int tmp = local_dest[j];
-				local_dest[j] = global_min[0] + current_vertex[ j + start];
+				local_dest[j] = global_min[0] + current_vertex_part[ j ];
 				if (priority_queue.contain(j))
-					priority_queue.decrease_key(j, tmp - (global_min[0] + current_vertex[j + start])); 	
+					priority_queue.decrease_key(j, tmp - (global_min[0] + current_vertex_part[j ])); 	
 			}
 		}
 				

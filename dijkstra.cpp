@@ -111,10 +111,9 @@ int* generate_graph(int num_of_vertices) {
 	return adjacency_matrix;
 }
 
-void serial_dijkstras_algorithm(int* adjacency_matrix, int num_of_vertices, int source, bool del = true) {
+int*  serial_dijkstras_algorithm(int* adjacency_matrix, int num_of_vertices, int source, bool del = true) {
 	//	This function does dijkstra's algorithm for a random graph.
 	
-	double time1 = MPI_Wtime();
 	//Initialize destination and visited arrays
 	int* destination = new int[num_of_vertices];
 	
@@ -133,6 +132,7 @@ void serial_dijkstras_algorithm(int* adjacency_matrix, int num_of_vertices, int 
 	vec.clear();
 	
 	//Start time
+	double time1 = MPI_Wtime();
 	
 	int iteration_count = 0;
 	
@@ -147,7 +147,7 @@ void serial_dijkstras_algorithm(int* adjacency_matrix, int num_of_vertices, int 
 
 		//Fix distances from adjacent to the current vertices
 		for (int j = 0; j < num_of_vertices; ++j) {
-				if (destination[j] > current_value + adjacency_matrix[current * num_of_vertices + j]  ) {
+				if (adjacency_matrix[current * num_of_vertices + j] != INF &&  destination[j] > current_value + adjacency_matrix[current * num_of_vertices + j]  ) {
 					destination[j] = current_value + adjacency_matrix[current * num_of_vertices + j];
 					if (priority_queue.contain(j))
 						priority_queue.decrease_key(j, priority_queue.get_value(j) - (current_value + adjacency_matrix[current * num_of_vertices + j])); 	
@@ -163,20 +163,22 @@ void serial_dijkstras_algorithm(int* adjacency_matrix, int num_of_vertices, int 
 	
 	//Printing results
 	cout << "Serial\n"; //from " << source << ": " <<  endl;
-	for (int i = 0; i < num_of_vertices; ++i) {
+	/*for (int i = 0; i < num_of_vertices; ++i) {
 		if (destination[i] == INF) {
 			cout << "inf ";
 		} else {
 			cout << destination[i] << " ";
 		}
 	}
-	cout << endl;
+	cout << endl;*/
 	cout << "Time: " << time2 - time1 << endl;;
 	
 	//Free allocated memory
-	delete[] destination;
+	//delete[] destination;
 	if (del)
 		delete[] adjacency_matrix;
+	
+	return destination;
 }
 
 int* split_vertices(int num_of_vertices) {
@@ -197,12 +199,9 @@ int* split_vertices(int num_of_vertices) {
 
 void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 	int* adjacency_matrix = nullptr;//d
+	int* serial_result = nullptr;
 	int* destination = nullptr;//d
-	int* splits = nullptr;//d
-	int* lengths = nullptr;//d
 	int* displacements = nullptr;//d
-	int length = 0;
-	int start = 0, end = 0;
 	int* matrix_disp = nullptr;//d
 	int* current_vertex = new int[num_of_vertices];//d
 	int* matrix_lengths = nullptr;//d
@@ -210,23 +209,29 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &proc_rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	int* id = new int[size + 1];//d
-	int* splits_lin = new int[size];
-	int* lengths_lin = new int[size]; 
-	if (proc_rank == 0) {	
+	int* splits = new int[size];
+	int* lengths = new int[size]; 
+	
+	if (proc_rank == 0) {
+		//Generate a graph
 		adjacency_matrix = generate_graph(num_of_vertices);
-		serial_dijkstras_algorithm(adjacency_matrix, num_of_vertices, source, false);
-		cout.flush();
+		
+		//Saving a serial result
+		serial_result = serial_dijkstras_algorithm(adjacency_matrix, num_of_vertices, source, false);
 		time3 = MPI_Wtime();
 		splits = split_vertices(num_of_vertices);
-		lengths = new int[size];
+		//lengths = new int[size];
 		matrix_lengths = new int[size];
 		displacements = new int[size];
 		matrix_disp = new int[size];
+		
+		//Init the destination array
 		destination = new int[num_of_vertices];
 		for (int i = 0; i < num_of_vertices; ++i) {
 			destination[i] = INF;
 		}
 		destination[source] = 0;
+		
 		for (int i = 0; i < size - 1; ++i) {
 			lengths[i] = splits[i + 1] - splits[i];
 			displacements[i] = splits[i];
@@ -237,32 +242,34 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 		displacements[size - 1] = splits[size - 1];
 		lengths[size - 1] = num_of_vertices - splits[size - 1];
 		for (int i = 0; i < size; ++i) {
-			splits_lin[i] = splits[i];
-			lengths_lin[i] = lengths[i];
 			matrix_disp[i] = displacements[i] * num_of_vertices;
 			matrix_lengths[i] = lengths[i] * num_of_vertices;
 		}
 	}
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	//Broadcast additional information
 	MPI_Bcast(id, size + 1, MPI_INT, 0, MPI_COMM_WORLD);
-	MPI_Scatter(splits, 1, MPI_INT, &start, 1, MPI_INT, 0, MPI_COMM_WORLD);
-	MPI_Bcast(splits_lin, size, MPI_INT, 0, MPI_COMM_WORLD);
-	MPI_Scatter(lengths, 1, MPI_INT, &length, 1, MPI_INT, 0, MPI_COMM_WORLD);
-	MPI_Bcast(lengths_lin, size, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Bcast(splits, size, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Bcast(lengths, size, MPI_INT, 0, MPI_COMM_WORLD);
+	
+	//Initialize additional parameters
+	int length = lengths[proc_rank];
+	int start = splits[proc_rank];
+	int end = (proc_rank == size - 1) ? num_of_vertices : (splits[proc_rank + 1]); 
+	
+	//Initialize arrays for recieving a data
 	int* local_dest = new int[length];
 	int* partition = new int[length * num_of_vertices];
-
+	
+	//Scatter the matrix and the destination array
 	MPI_Scatterv(adjacency_matrix, matrix_lengths, matrix_disp, MPI_INT, partition, length * num_of_vertices, MPI_INT, 0, MPI_COMM_WORLD);
 	MPI_Scatterv(destination, lengths, splits, MPI_INT, local_dest, length, MPI_INT, 0, MPI_COMM_WORLD);
 	if (proc_rank == 0) {
 		delete[] matrix_disp;
 		delete[] matrix_lengths;
 		delete[] adjacency_matrix;
-		for (int i = 0; i < size - 1; ++i) {
-			splits[i] = splits[i + 1];
-		}
-		splits[size - 1] = num_of_vertices;
 	}
-	MPI_Scatter(splits, 1, MPI_INT, &end, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	
 	//Construct a priority_queue
 	vector<edge> vec;
@@ -272,12 +279,11 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 	Heap priority_queue(vec);
 	vec.clear();
 
-	if (proc_rank == 0) {
-		delete[] splits;
-	}
 	int iteration_count = 0;
 	int* current_vertex_part = new int[length];
-		time1 = MPI_Wtime();
+
+	time1 = MPI_Wtime();
+	
 	while(iteration_count != num_of_vertices) {
 		
 		//Find not selected vertex with minimum distance
@@ -314,11 +320,11 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 		}
 
 		//Broadcast the current vertex raw
-		//MPI_Bcast(current_vertex, num_of_vertices, MPI_INT, curr_proc, MPI_COMM_WORLD);
-		MPI_Scatterv(current_vertex, lengths_lin, splits_lin, MPI_INT, current_vertex_part, length, MPI_INT, curr_proc, MPI_COMM_WORLD);
+		MPI_Scatterv(current_vertex, lengths, splits, MPI_INT, current_vertex_part, length, MPI_INT, curr_proc, MPI_COMM_WORLD);
+		
 		//Relax all adjacent to the current vertices
 		for (int j = 0; j < end - start; ++j) {
-			if ( local_dest[j] > global_min[0] + current_vertex_part[ j ] ) {
+			if (current_vertex_part[j] != INF &&  local_dest[j] > global_min[0] + current_vertex_part[ j ] ) {
 				int tmp = local_dest[j];
 				local_dest[j] = global_min[0] + current_vertex_part[ j ];
 				if (priority_queue.contain(j))
@@ -334,18 +340,29 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 	
 	//Printing results
 	if (proc_rank == 0) {
-	time2 = MPI_Wtime();
-		cout << "Parallel:\n";// from " << source << ": " <<  endl;
+		time2 = MPI_Wtime();
+		bool isError = false;
 		for (int i = 0; i < num_of_vertices; ++i) {
+			if (serial_result[i] != destination[i]) {
+				cout << "Error!" << endl;
+				isError = true;
+				break;
+			}
+		}
+		if (!isError) {
+			cout << "Ok" << endl;
+		}
+		cout << "Parallel:\n";// from " << source << ": " <<  endl;
+		/*for (int i = 0; i < num_of_vertices; ++i) {
 			if (destination[i] == INF) {
 				cout << "inf ";
 			} else {
 				cout << destination[i] << " ";
 			}
 		}
-		cout << endl;
+		cout << endl;*/
 		cout << "Time: " << time2 - time1 << endl;
-		cout << "time with init: " << time2 - time3 << endl;
+		cout << "Parallel time with init: " << time2 - time3 << endl;
 	}
 
 	//Free allocated memory

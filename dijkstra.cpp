@@ -246,6 +246,7 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 			matrix_lengths[i] = lengths[i] * num_of_vertices;
 		}
 	}
+	
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	//Broadcast additional information
@@ -371,12 +372,13 @@ void parallel_dijkstras_algorithm(int num_of_vertices, int source) {
 	if (proc_rank == 0) {
 		delete[] destination;
 		delete[] displacements;
-		delete[] lengths;
-		//delete[] adjacency_matrix;
+		delete[] serial_result;
 	}
-	delete[] current_vertex;
 	delete[] partition;
-	//delete[] selected;
+	delete[] splits;
+	delete[] current_vertex_part;
+	delete[] current_vertex;
+	delete[] lengths;
 }
 
 int main(int argc, char* argv[])
